@@ -9,7 +9,7 @@
  * file path alone.
  */
 export const LOGO_ASPECT_RATIOS: Readonly<Record<string, number>> = {
-  nexagro: 3.2297,
+  nexagro: 3.9669,
 };
 
 /** Falls back to square when a company has no entry yet. */
