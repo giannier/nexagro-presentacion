@@ -205,6 +205,39 @@
   }
 }
 
+/*
+ * Later spins (timer or click) must not blink the logo out and back in, so they use a
+ * variant that starts fully visible: one turn plus a short pop towards the viewer.
+ */
+.logo-coin-pop.logo-coin-pop--again {
+  animation: logo-coin-pulse 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.logo-coin-spin.logo-coin-spin--again {
+  animation: logo-coin-spin-once 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+@keyframes logo-coin-spin-once {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+@keyframes logo-coin-pulse {
+  0%,
+  100% {
+    transform: scale(1) translateZ(0);
+    filter: drop-shadow(0 0 0 rgba(20, 50, 28, 0));
+  }
+  50% {
+    transform: scale(1.06) translateZ(60px);
+    filter: drop-shadow(0 22px 22px rgba(20, 50, 28, 0.28));
+  }
+}
+
 @keyframes logo-coin-fade {
   from {
     opacity: 0;
@@ -219,7 +252,9 @@
     animation: logo-coin-fade 0.6s ease-out backwards;
   }
 
-  .logo-coin-spin {
+  .logo-coin-spin,
+  .logo-coin-spin.logo-coin-spin--again,
+  .logo-coin-pop.logo-coin-pop--again {
     animation: none;
   }
 }

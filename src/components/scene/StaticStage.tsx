@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { CompanyShowcase } from '@/components/showcase/CompanyShowcase';
 import { CompanyHud } from '@/components/ui/CompanyHud';
@@ -8,6 +8,9 @@ import { IsoBadge } from '@/components/ui/IsoBadge';
 import { WheelProvider } from '@/context/WheelContext';
 import { COMPANIES } from '@/data/companies';
 import { logoAspectRatio } from '@/data/logoAspectRatios';
+
+/** Time between the starts of two automatic coin spins (a spin itself lasts 1.5 s). */
+const COIN_REPLAY_INTERVAL_MS = 10_000;
 
 /**
  * Single-company stage: the same split layout as the 3D experience, but the logo is a
@@ -17,8 +20,19 @@ import { logoAspectRatio } from '@/data/logoAspectRatios';
  */
 export function StaticStage() {
   const company = COMPANIES[0];
-  // Bumped by a click on the logo to replay the coin entrance.
+  // Bumped by a click on the logo, and by the timer below, to replay the coin spin.
   const [plays, setPlays] = useState(0);
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const timer = window.setInterval(() => {
+      // A hidden tab would only queue spins nobody sees.
+      if (!document.hidden) setPlays((count) => count + 1);
+    }, COIN_REPLAY_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   if (company === undefined) return null;
 
@@ -40,7 +54,10 @@ export function StaticStage() {
               aria-label="Reproducir animación del logo"
               className="w-[90%] max-w-[1100px] max-h-[85%] cursor-pointer select-none rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-neutral-900"
             >
-              <div key={plays} className="logo-coin-pop">
+              <div
+                key={plays}
+                className={plays === 0 ? 'logo-coin-pop' : 'logo-coin-pop logo-coin-pop--again'}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/logos/${company.slug}.svg`}
@@ -48,7 +65,7 @@ export function StaticStage() {
                   decoding="async"
                   draggable={false}
                   style={{ aspectRatio: aspect }}
-                  className="logo-coin-spin block h-auto max-h-full w-full select-none object-contain"
+                  className={`${plays === 0 ? 'logo-coin-spin' : 'logo-coin-spin logo-coin-spin--again'} block h-auto max-h-full w-full select-none object-contain`}
                 />
               </div>
             </button>
