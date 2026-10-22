@@ -62,8 +62,8 @@
    * looking cramped; `max-height` keeps a long one from starving the wheel of space.
    */
   height: auto;
-  min-height: 36dvh;
-  max-height: 60dvh;
+  min-height: 52dvh;
+  max-height: 62dvh;
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 26px), 50% 100%, 0 calc(100% - 26px));
 }
 
@@ -154,5 +154,72 @@
   88%,
   100% {
     transform: rotateY(360deg) scale(1);
+  }
+}
+
+/**
+ * Coin entrance for the static single-company logo (see `<StaticStage>`).
+ *
+ * Two nested animations so each owns its own `transform`: `.logo-coin-pop` (the wrapper)
+ * grows the logo towards the viewer with a small overshoot and a depth shadow, and
+ * `.logo-coin-spin` (the image) turns it two full revolutions about its vertical axis.
+ * `animation-fill-mode: backwards` (not `both`) on purpose: once the animation ends no
+ * transform, filter or opacity remains, so the SVG rests as plain, razor-sharp 2D.
+ */
+.logo-coin-pop {
+  perspective: 1000px;
+  animation: logo-coin-pop 2.1s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.logo-coin-spin {
+  animation: logo-coin-spin 2.1s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+@keyframes logo-coin-spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(720deg);
+  }
+}
+
+@keyframes logo-coin-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.55) translateZ(-120px);
+    filter: drop-shadow(0 0 0 rgba(20, 50, 28, 0));
+  }
+  25% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.06) translateZ(60px);
+    filter: drop-shadow(0 22px 22px rgba(20, 50, 28, 0.28));
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateZ(0);
+    filter: drop-shadow(0 0 0 rgba(20, 50, 28, 0));
+  }
+}
+
+@keyframes logo-coin-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-coin-pop {
+    animation: logo-coin-fade 0.6s ease-out backwards;
+  }
+
+  .logo-coin-spin {
+    animation: none;
   }
 }

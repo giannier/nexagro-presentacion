@@ -1,10 +1,12 @@
-import * as THREE from 'three';
-
 const TWO_PI = Math.PI * 2;
 
-/** Frame-rate independent exponential approach. Thin wrapper kept for a single import site. */
+/**
+ * Frame-rate independent exponential approach (same formula as `THREE.MathUtils.damp`).
+ * Implemented here so this module stays free of the three.js dependency, which lets the
+ * static single-company page avoid loading the 3D runtime at all.
+ */
 export function damp(current: number, target: number, lambda: number, deltaTime: number): number {
-  return THREE.MathUtils.damp(current, target, lambda, deltaTime);
+  return current + (target - current) * (1 - Math.exp(-lambda * deltaTime));
 }
 
 export function clamp(value: number, min: number, max: number): number {

@@ -186,11 +186,13 @@ export const SELECT_CONFIRM_DURATION = Math.max(
  * Renderer / quality tiers
  * ------------------------------------------------------------------ */
 
-export const DPR_HIGH: [number, number] = [1, 2];
-export const DPR_LOW: [number, number] = [1, 1.5];
+// The scene is a handful of unlit textured quads, so rendering at the device's native
+// pixel ratio costs almost nothing and is what keeps the logo crisp on retina screens.
+export const DPR_HIGH: [number, number] = [1, 3];
+export const DPR_LOW: [number, number] = [1, 2];
 
 export const ANISOTROPY_HIGH = 4;
-export const ANISOTROPY_LOW = 1;
+export const ANISOTROPY_LOW = 4;
 
 /** Viewport width (px) below which a coarse pointer implies a phone-class device. */
 export const LOW_TIER_VIEWPORT_WIDTH = 768;

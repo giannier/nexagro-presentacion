@@ -13,7 +13,7 @@ import { CompanyWheel } from '@/components/wheel/CompanyWheel';
 import { fitLogoSize } from '@/components/wheel/logoGeometry';
 import { QualityProvider, useQuality } from '@/context/QualityContext';
 import { WheelProvider, useWheel } from '@/context/WheelContext';
-import { COMPANIES } from '@/data/companies';
+import { COMPANIES, COMPANY_COUNT } from '@/data/companies';
 import { logoAspectRatio } from '@/data/logoAspectRatios';
 import { preloadCompanyTextures } from '@/hooks/useCompanyTextures';
 import { useWheelInput } from '@/hooks/useWheelPhysics';
@@ -135,9 +135,15 @@ function Scene() {
         <CompanyWheel />
       </Suspense>
 
-      <AdaptiveDpr pixelated />
-      <AdaptiveEvents />
-      <PerformanceGuard />
+      {/* With one static logo there is nothing to protect: stepping the pixel ratio down only
+          made it soft. Keep the adaptive guards for the multi-company wheel. */}
+      {COMPANY_COUNT > 1 && (
+        <>
+          <AdaptiveDpr pixelated />
+          <AdaptiveEvents />
+          <PerformanceGuard />
+        </>
+      )}
     </>
   );
 }

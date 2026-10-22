@@ -8,13 +8,13 @@ import type { ShowcaseMedia } from '@/data/companyProfiles';
 export const COMPANY_COVERS: Readonly<Record<string, ShowcaseMedia>> = {
   nexagro: {
     type: 'image',
-    // Default (portrait layouts: wide, short panel): 800x680 crop of the photo around the woman.
+    // Portrait layouts (wide, short panel, ~1.3:1): the original's full 941px height and the
+    // leftmost 1280px, so nothing is cropped vertically (hat and shoulders stay in frame).
     src: '/portadas/nexagro-panel-ancho.webp',
-    // Landscape layouts give the panel a tall, narrow column (46% x 100%): a 600x941 crop
-    // centred on her is served there instead of letting object-cover slice the 16:9 original.
+    // Landscape layouts: tall 46% x 100% column (~0.82:1). Full height again, 800px wide
+    // (slightly wider than the panel so object-cover only trims the sides), centred on her.
     landscapeSrc: '/portadas/nexagro-panel-alto.webp',
-    // Keep the head in frame when object-cover trims the top or bottom of either crop.
-    focus: '55% 5%',
+    focus: '50% 50%',
   },
 };
 

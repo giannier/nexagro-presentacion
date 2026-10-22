@@ -2,7 +2,8 @@
 
 import dynamic from 'next/dynamic';
 
-import { DomLoader } from '@/components/scene/Loader';
+import { DomLoader } from '@/components/scene/DomLoader';
+import { COMPANY_COUNT } from '@/data/companies';
 
 /**
  * The entire Three.js runtime is client-only.
@@ -14,6 +15,12 @@ import { DomLoader } from '@/components/scene/Loader';
 const SceneCanvas = dynamic(
   () => import('@/components/scene/SceneCanvas').then((module) => module.SceneCanvas),
   { ssr: false, loading: () => <DomLoader /> },
+);
+
+/** Light client-only stage for a single company (the HUD reads `window`, so no SSR). */
+const StaticStage = dynamic(
+  () => import('@/components/scene/StaticStage').then((module) => module.StaticStage),
+  { ssr: false },
 );
 
 export default function HomePage() {
@@ -29,7 +36,8 @@ export default function HomePage() {
         </div>
       </noscript>
 
-      <SceneCanvas />
+      {/* One company: plain HTML, no WebGL. Several: the 3D wheel (chunk loads only then). */}
+      {COMPANY_COUNT === 1 ? <StaticStage /> : <SceneCanvas />}
     </main>
   );
 }
