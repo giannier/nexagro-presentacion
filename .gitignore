@@ -21,10 +21,8 @@ next-env.d.ts
 /_next/
 /isos/
 /logos/
-# Windows and macOS match ignore patterns case-insensitively, so the rule above also
-# hides the tracked source folder LOGOS/. Re-include it: on Linux (`core.ignorecase`
-# false) this line matches nothing, so the deployed /logos/ stays ignored on the host.
-!/LOGOS/
+/api/
+/clientes/
 /portadas/
 /portafolio/
 /redes/
