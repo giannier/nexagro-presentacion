@@ -3,8 +3,10 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 
 import { SocialIcon } from '@/components/social/SocialIcon';
-import { ExternalIcon } from '@/components/ui/icons';
+import { ExternalIcon, MailIcon, PhoneIcon } from '@/components/ui/icons';
 import { COMPANIES, getLogoPath } from '@/data/companies';
+import { profileFor } from '@/data/companyProfiles';
+import { legalNameFor, rucFor } from '@/data/companyRuc';
 import { socialLinksFor } from '@/data/companySocials';
 import { SOCIAL_NETWORKS } from '@/data/socialNetworks';
 
@@ -52,6 +54,10 @@ export default async function CompanySocialPage({ params }: PageProps) {
   if (company === undefined) notFound();
 
   const links = socialLinksFor(company.slug);
+  const email = profileFor(company.slug).email;
+  const phone = profileFor(company.slug).phone;
+  const ruc = rucFor(company.slug);
+  const legalName = legalNameFor(company.slug);
   const websiteHost = company.url === '' ? '' : new URL(company.url).host;
 
   return (
@@ -120,7 +126,48 @@ export default async function CompanySocialPage({ params }: PageProps) {
         </a>
         )}
 
-        <p className="mt-auto pt-12 text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-neutral-400">
+        {phone !== '' && (
+          <a
+            href={`tel:${phone.replace(/\s/g, '')}`}
+            className={[
+              'mt-4 flex w-full items-center gap-4 rounded-2xl border border-neutral-200 px-5 py-4',
+              'text-base font-semibold text-neutral-900 transition-colors hover:bg-neutral-50',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900',
+            ].join(' ')}
+          >
+            <PhoneIcon className="h-6 w-6 shrink-0 text-neutral-500" />
+            <span className="flex-1">
+              Llamar o escribir
+              <span className="block text-xs font-normal text-neutral-500">{phone}</span>
+            </span>
+          </a>
+        )}
+
+        {email !== '' && (
+          <a
+            href={`mailto:${email}`}
+            className={[
+              'mt-4 flex w-full items-center gap-4 rounded-2xl border border-neutral-200 px-5 py-4',
+              'text-base font-semibold text-neutral-900 transition-colors hover:bg-neutral-50',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900',
+            ].join(' ')}
+          >
+            <MailIcon className="h-6 w-6 shrink-0 text-neutral-500" />
+            <span className="flex-1">
+              Escribir por correo
+              <span className="block text-xs font-normal text-neutral-500">{email}</span>
+            </span>
+          </a>
+        )}
+
+        {(legalName !== undefined || ruc !== undefined) && (
+          <p className="mt-auto pt-12 text-center text-[0.65rem] leading-relaxed text-neutral-500">
+            {legalName}
+            {legalName !== undefined && ruc !== undefined && <br />}
+            {ruc !== undefined && `RUC ${ruc}`}
+          </p>
+        )}
+        <p className="pt-4 text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-neutral-400">
           NEXAGRO Export
         </p>
       </main>

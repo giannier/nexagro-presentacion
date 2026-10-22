@@ -14,6 +14,13 @@
 export type ShowcaseMedia = {
   readonly type: 'image' | 'video';
   readonly src: string;
+  /**
+   * Alternate crop for landscape layouts, where the showcase panel is a tall column and
+   * `object-cover` would discard most of a wide source. Served via `<source media>`.
+   */
+  readonly landscapeSrc?: string;
+  /** CSS `object-position` focal point, e.g. `30% 30%`. Defaults to the centre. */
+  readonly focus?: string;
   /** Poster frame for a video, shown while it loads. */
   readonly poster?: string;
 };
@@ -33,8 +40,15 @@ export type CompanyProfile = {
 };
 
 export const COMPANY_PROFILES: Readonly<Record<string, CompanyProfile>> = {
-  // NEXAGRO: no headline, phone or email on file; the panel shows the logo and name only.
-  nexagro: { lead: '', highlight: '', tail: '', subtitle: '', phone: '', email: '' },
+  // NEXAGRO: headline and contact data come from the client's own material.
+  nexagro: {
+    lead: 'Productos agrícolas',
+    highlight: 'de alta calidad,',
+    tail: 'del campo peruano al mundo.',
+    subtitle: '',
+    phone: '+51 989 797 977',
+    email: 'info@nexagroexport.com',
+  },
 };
 
 const FALLBACK_PROFILE: CompanyProfile = {

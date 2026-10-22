@@ -74,7 +74,12 @@ export function CompanyShowcase() {
         />
       </div>
 
-      <div className="relative flex h-full flex-col justify-between p-4 sm:p-8 lg:p-10">
+      {/* `isolate`: the brush strokes use -z-10; without their own stacking context they would
+          sink behind the media layer above and never be seen. */}
+      {/* Portrait layouts clip the panel into a shallow V (`clip-path` in globals.css), so
+          the bottom padding has to clear that notch; the landscape polygon is flat along
+          the bottom edge and keeps the normal padding. */}
+      <div className="relative isolate flex h-full flex-col justify-between px-4 pb-10 pt-4 sm:px-8 sm:pb-12 sm:pt-8 lg:px-10 lg:pt-10 landscape:pb-4 landscape:sm:pb-8 landscape:lg:pb-10">
         <header className="relative inline-block self-start px-3 py-2 sm:px-4 sm:py-2.5">
           <BrushStroke color={color} />
           <p
@@ -187,8 +192,8 @@ export function CompanyShowcase() {
  *
  * Three masked layers, sliced from the same photographed watercolour texture and
  * recoloured through `mask-image` (the shape's alpha decides what shows, the brand
- * colour is the actual paint, so one shared set of assets works for all nineteen
- * companies without shipping nineteen coloured images):
+ * colour is the actual paint, so one shared set of assets works for every company
+ * without shipping one coloured image per company):
  *
  *   - `pincelada-borde-superior.png` / `-inferior.png`, the genuinely torn top and
  *     bottom edge of the original brush stroke, each pinned to a FIXED pixel height at

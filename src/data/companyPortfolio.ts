@@ -13,7 +13,6 @@ export type PortfolioItem = {
 export const COMPANY_PORTFOLIO: Readonly<Record<string, readonly PortfolioItem[]>> = {
   nexagro: [
     { type: 'image', src: '/portafolio/nexagro/agricultores-recomiendan-nexagro.webp', name: 'Agricultores que recomiendan Nexagro' },
-    { type: 'image', src: '/portafolio/nexagro/agronoma-entre-cultivos-cosecha-fresca.webp', name: 'Agrónoma entre cultivos y cosecha fresca' },
     { type: 'image', src: '/portafolio/nexagro/capacitacion-nexagro-huerto-palta.webp', name: 'Capacitación Nexagro en el huerto de palta' },
     { type: 'image', src: '/portafolio/nexagro/nutricion-fortalece-tu-cultivo.webp', name: 'Nutrición que fortalece tu cultivo' },
     { type: 'image', src: '/portafolio/nexagro/productos-peruanos-calidad-mundial.webp', name: 'Productos peruanos, calidad mundial' },

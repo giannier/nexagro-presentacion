@@ -20,7 +20,7 @@ src/app/                 layout, home page, redes/[slug] (QR target)
 src/components/          scene, wheel, showcase, ui
 src/data/                single NEXAGRO entry: companies, colors, profiles, socials
 src/features/contacts/   contact validation rules (shared by browser and PHP)
-public/logos/nexagro.png logo
+public/logos/nexagro.png (WebGL texture) and nexagro.svg  logo
 public/api/              contacts.php (public API), db.php (PDO + config loader)
 public/clientes/         password-protected list of registered contacts (+ CSV export)
 sql/schema.sql           MariaDB table

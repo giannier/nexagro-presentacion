@@ -58,18 +58,27 @@ export function ShowcaseMedia({ company, color }: ShowcaseMediaProps) {
         playsInline
         onError={() => setFailed(true)}
         className="absolute inset-0 h-full w-full object-cover"
+        style={{ objectPosition: media.focus }}
       />
     );
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      key={media.src}
-      src={media.src}
-      alt={`Imagen referencial de ${company.name}`}
-      onError={() => setFailed(true)}
-      className="absolute inset-0 h-full w-full object-cover"
-    />
+    <picture className="absolute inset-0 block">
+      {/* Landscape = tall panel (see `.showcase-panel` in globals.css): the tall crop
+          frames the subject instead of cropping the wide original down to a sliver. */}
+      {media.landscapeSrc !== undefined && (
+        <source media="(orientation: landscape)" srcSet={media.landscapeSrc} />
+      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        key={media.src}
+        src={media.src}
+        alt={`Imagen referencial de ${company.name}`}
+        onError={() => setFailed(true)}
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ objectPosition: media.focus }}
+      />
+    </picture>
   );
 }

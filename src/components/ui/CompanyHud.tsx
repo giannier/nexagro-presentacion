@@ -14,7 +14,7 @@ import { useWheel } from '@/context/WheelContext';
 import { COMPANIES, COMPANY_COUNT } from '@/data/companies';
 import { companyColor } from '@/data/companyColors';
 import { portfolioFor } from '@/data/companyPortfolio';
-import { rucFor } from '@/data/companyRuc';
+import { legalNameFor, rucFor } from '@/data/companyRuc';
 import { useVoiceControl } from '@/hooks/useVoiceControl';
 import {
   HINT_FADE_DURATION,
@@ -207,6 +207,7 @@ export function CompanyHud() {
 
   const color = companyColor(company.slug);
   const ruc = rucFor(company.slug);
+  const legalName = legalNameFor(company.slug);
   const portfolioItems = portfolioFor(company.slug);
   const flyers = portfolioItems.filter((item) => item.type === 'image');
   const videos = portfolioItems.filter((item) => item.type === 'video');
@@ -287,6 +288,9 @@ export function CompanyHud() {
               <p className="mt-2 text-sm font-semibold tracking-[0.1em]" style={{ color }}>
                 RUC {ruc}
               </p>
+            )}
+            {legalName !== undefined && (
+              <p className="mt-1 text-[0.65rem] tracking-[0.12em] text-neutral-500">{legalName}</p>
             )}
           </div>
 
