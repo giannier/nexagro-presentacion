@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/nexagroe/portafolio.nexagroexport.com/
+    - /bin/cp -R out/. $DEPLOYPATH

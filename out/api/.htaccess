@@ -1,0 +1,5 @@
+# db.php is an include, never an endpoint.
+<Files "db.php">
+    Require all denied
+</Files>
+Options -Indexes

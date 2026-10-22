@@ -1,0 +1,158 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink-900: #04050a;
+  --color-ink-800: #070911;
+  --color-ink-700: #0c1019;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: #ffffff;
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* The wheel owns the vertical gesture; the document itself never scrolls. */
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* Only reveal focus rings for keyboard users. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/** Pure white stage behind the canvas. The logos carry the composition. */
+.backdrop-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: #ffffff;
+}
+
+/**
+ * Left showcase panel.
+ *
+ * Two stacked clip paths: the panel itself is filled with the company's brand colour,
+ * and the artwork layer is inset from the angled edge — what shows between them is the
+ * coloured band along the diagonal. Both shapes must keep the same vertices, or the
+ * band stops being parallel.
+ *
+ * The split is driven by ORIENTATION, not by width. A 12.9" tablet is 1024px wide while
+ * standing upright, so a width breakpoint would split it into columns in portrait; by
+ * orientation, every tablet stacks when held upright and splits when turned sideways.
+ */
+.showcase-panel {
+  width: 100%;
+  /*
+   * Height is content-driven, not a fixed fraction of the screen: copy length varies
+   * per company (a three-line headline plus three contact chips needs real room), and a
+   * fixed height silently clipped whatever did not fit — the contact row could vanish
+   * with no visual sign anything was missing. `min-height` keeps short profiles from
+   * looking cramped; `max-height` keeps a long one from starving the wheel of space.
+   */
+  height: auto;
+  min-height: 36dvh;
+  max-height: 60dvh;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 26px), 50% 100%, 0 calc(100% - 26px));
+}
+
+.showcase-media {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 44px),
+    50% calc(100% - 18px),
+    0 calc(100% - 44px)
+  );
+}
+
+@media (orientation: landscape) {
+  .showcase-panel {
+    width: 46%;
+    height: 100%;
+    /* The portrait clamp above must not leak in here: `max-height` overrides `height`
+       regardless of viewport, so without this reset the panel was silently capped at
+       52% of the screen instead of filling the full-height column. */
+    min-height: 0;
+    max-height: none;
+    clip-path: polygon(0 0, 86% 0, 100% 50%, 86% 100%, 0 100%);
+  }
+
+  .showcase-media {
+    clip-path: polygon(
+      0 0,
+      calc(86% - 22px) 0,
+      calc(100% - 22px) 50%,
+      calc(86% - 22px) 100%,
+      0 100%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ping {
+    animation: none;
+  }
+
+  .iso-badge-float,
+  .iso-badge-coin {
+    animation: none;
+  }
+}
+
+/**
+ * ISO certification stamp beside the focused logo (see `<IsoBadge>`).
+ *
+ * Float on the wrapper, coin flip on the image — deliberately two elements, because a
+ * single CSS animation can only own `transform` once; split this way they compose. The
+ * flip rests for most of its seven seconds and turns once, like a medallion catching the
+ * eye and settling, rather than spinning non-stop next to a logo someone is reading.
+ * Mid-turn the stamp scales up and back down: the turn reads as the medallion leaning
+ * out of the screen towards the visitor instead of a flat card flipping in place.
+ * Everything here is transform-only, so the compositor does the work and the 3D scene
+ * keeps its frame budget.
+ */
+.iso-badge-float {
+  animation: iso-badge-float 5s ease-in-out infinite;
+}
+
+.iso-badge-coin {
+  animation: iso-badge-coin 7s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+@keyframes iso-badge-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes iso-badge-coin {
+  0%,
+  62% {
+    transform: rotateY(0deg) scale(1);
+  }
+  76% {
+    /* Edge-on to face-on: the first half of the turn, at the point where the stamp is
+       physically closest, is what sells the approach. */
+    transform: rotateY(180deg) scale(1.22);
+  }
+  88%,
+  100% {
+    transform: rotateY(360deg) scale(1);
+  }
+}
