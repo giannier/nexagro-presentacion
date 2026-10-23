@@ -115,3 +115,14 @@ function nx_string_list(mixed $value): array
     }
     return array_values(array_filter($value, static fn ($entry) => is_string($entry)));
 }
+
+/**
+ * Keeps digits only. A leading "+" survives only when there are enough digits for a country
+ * code plus a 9-digit Peruvian mobile (11+): the speech pipeline sometimes prefixes a "+" to
+ * a number dictated digit by digit, which would otherwise read as a bogus country code.
+ */
+function nx_clean_phone(string $phone): string
+{
+    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+    return (str_starts_with(trim($phone), '+') && strlen($digits) >= 11) ? '+' . $digits : $digits;
+}

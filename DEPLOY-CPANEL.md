@@ -37,10 +37,14 @@ OpenAI key lives only in n8n (credential `OpenAI CAPACITA`), never on this host.
      INDEX idx_endpoint_ip_created (endpoint, ip_hash, created_at)
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
    ```
-2. **Import the workflow** in n8n: Workflows > Import from File (or paste into the canvas) the file
-   `nexagro-config/nexagro-voice.workflow.READY.json` (secret already inside; it is gitignored and
-   must not be shared). The repo copy `integrations/n8n/nexagro-voice.workflow.json` has the
-   placeholder `REPLACE_WITH_SHARED_SECRET` in both "Check Secret" nodes instead.
+2. **Import the workflows ONE AT A TIME** in n8n (Workflows > Import from File). n8n cannot publish a
+   workflow that holds two webhooks, and cannot activate two workflows sharing a method + path:
+   - `nexagro-config/nexagro-quick-register.workflow.READY.json` (webhook `nexagro-quick-register`)
+   - `nexagro-config/nexagro-voice-contact.workflow.READY.json` (webhook `voice-contact`)
+   The `READY` files already contain the secret (they are gitignored; never share them). The repo copies in
+   `integrations/n8n/` carry the placeholder `REPLACE_WITH_SHARED_SECRET` in the "Check Secret" node and
+   must be edited before use. After any edit press **Save** and then **Publish**: production webhooks run the
+   last published version, not the draft.
 3. **Credential**: the three OpenAI nodes (`Extract Client Fields`, `Transcribe Audio`,
    `Extract Contact Fields`) reference `OpenAI CAPACITA`. If n8n does not find it by id, open each
    node and select your OpenAI credential.
@@ -71,8 +75,15 @@ OpenAI key lives only in n8n (credential `OpenAI CAPACITA`), never on this host.
 
 ### n8n path conflict
 
-n8n refuses to activate two workflows that share the same webhook method and path. The quick-register
-webhook therefore uses the unique path `nexagro-quick-register` (not `quick-register`, which an older
-workflow may already own). Import `integrations/n8n/nexagro-quick-register.workflow.json` (or the
-`READY` copy in `nexagro-config/`) and `nexagro-voice.workflow.json` separately; do not import the
-combined file if either flow is already published.
+The quick-register webhook uses the unique path `nexagro-quick-register` (not `quick-register`, which an
+older workflow may already own). If a workflow with the same path is already active, delete or deactivate
+it before importing, or n8n will report a conflict.
+
+### Quick-register now captures company and email
+
+Deploy order: **update the n8n workflow first** (delete the old "NEXAGRO Quick Register" workflow, import the new
+`nexagro-config/nexagro-quick-register.workflow.READY.json`, Save + Publish), **then deploy the site**.
+The banner needs the four required fields (name, phone, company, rubro); it then waits about 6 seconds for an
+optional email (or the word "guardar") before saving. With the old workflow the company never arrives and the
+banner would keep listening, so do not deploy the site first.
+

@@ -11,7 +11,8 @@ const QR_MAX_BODY_BYTES = 20000;
 const QR_MAX_TRANSCRIPT_CHARS = 4000;
 const QR_MAX_CALLS_PER_HOUR = 120;
 const QR_TIMEOUT_SECONDS = 15;
-const QR_FIELD_KEYS = ['fullName', 'phone', 'industry'];
+const QR_FIELD_KEYS = ['fullName', 'phone', 'companyName', 'email', 'industry'];
+const QR_KNOWN_MISSING = ['fullName', 'phone', 'companyName', 'industry'];
 
 $raw = file_get_contents('php://input', false, null, 0, QR_MAX_BODY_BYTES + 1);
 if ($raw === false || strlen($raw) > QR_MAX_BODY_BYTES) {
@@ -61,5 +62,8 @@ $fields = [];
 foreach (QR_FIELD_KEYS as $key) {
     $fields[$key] = is_string($workflow['fields'][$key] ?? null) ? $workflow['fields'][$key] : '';
 }
+if ($fields['phone'] !== '') {
+    $fields['phone'] = nx_clean_phone($fields['phone']);
+}
 
-nx_respond(200, ['ok' => true, 'fields' => $fields, 'missing' => nx_string_list($workflow['missing'] ?? [])]);
+nx_respond(200, ['ok' => true, 'fields' => $fields, 'missing' => array_values(array_intersect(nx_string_list($workflow['missing'] ?? []), QR_KNOWN_MISSING))]);

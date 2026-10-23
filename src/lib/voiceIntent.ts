@@ -19,6 +19,11 @@ export type VoiceCommand =
   | { readonly type: 'select-company'; readonly company: Company }
   | { readonly type: 'open-portfolio'; readonly company: Company | null }
   | { readonly type: 'open-catalog'; readonly company: Company | null }
+  | { readonly type: 'open-flyers' }
+  | { readonly type: 'open-videos' }
+  | { readonly type: 'play' }
+  | { readonly type: 'pause' }
+  | { readonly type: 'back' }
   | { readonly type: 'open-qr' }
   | { readonly type: 'open-form' }
   | { readonly type: 'quick-register' }
@@ -162,9 +167,14 @@ function matchCompany(utterance: string, words: readonly string[]): Company | nu
  *  checked as an exact substring instead — already distinctive and long enough that
  *  fuzzy word-by-word alignment across it would risk over-matching more than it helps. */
 function matchesAny(utterance: string, words: readonly string[], candidates: readonly string[]): boolean {
-  return candidates.some((candidate) =>
-    candidate.includes(' ') ? utterance.includes(candidate) : isFuzzyWordMatch(words, candidate),
-  );
+  // Chrome sometimes splits one word in two ("porta folio", "port folio"): long single
+  // words are therefore also looked for in the utterance with its spaces removed.
+  const compact = utterance.replace(/ /g, '');
+  return candidates.some((candidate) => {
+    if (candidate.includes(' ')) return utterance.includes(candidate);
+    if (isFuzzyWordMatch(words, candidate)) return true;
+    return candidate.length >= 8 && compact.includes(candidate);
+  });
 }
 
 function matchesAllWords(words: readonly string[], required: readonly string[]): boolean {
@@ -172,7 +182,17 @@ function matchesAllWords(words: readonly string[], required: readonly string[]):
 }
 
 const CATALOG_WORDS = ['catalogo'];
-const PORTFOLIO_WORDS = ['portafolio', 'portfolio'];
+const PORTFOLIO_WORDS = ['portafolio', 'portfolio', 'portafolios'];
+/** Exact short words on purpose (see MIN_FUZZY_LENGTH): "foto" or "video" must not fuzzy-match
+ *  ordinary words. The spellings are what Chrome's es-PE recogniser actually produces for
+ *  the English loanwords "flyer" and "video". */
+const FLYER_WORDS = [
+  'flyer', 'flyers', 'flayer', 'flayers', 'flaier', 'flaiers', 'fleyer', 'fleyers', 'flair', 'flaer',
+  'imagen', 'imagenes', 'folleto', 'folletos', 'foto', 'fotos', 'fotografia', 'fotografias', 'afiche', 'afiches',
+];
+const VIDEO_WORDS = ['video', 'videos', 'bideo', 'bideos', 'vidio', 'vidios'];
+const PLAY_WORDS = ['reproducir', 'reproduce', 'reproduzca', 'play', 'plei', 'reanudar'];
+const PAUSE_WORDS = ['pausa', 'pausar', 'pausalo', 'pause', 'pare', 'parar', 'detener', 'detente', 'deten'];
 const QR_WORDS = ['qr', 'codigo qr', 'escanear'];
 const FORM_WORDS = ['formulario'];
 /** Checked before FORM_WORDS: "registrar cliente" must win over a bare "registrar".
@@ -192,8 +212,10 @@ const WEBSITE_WORDS = [
   'ir a la web',
 ];
 const NEXT_WORDS = ['siguiente', 'proxima empresa', 'proximo', 'avanza', 'avanzar'];
-const PREVIOUS_WORDS = ['anterior', 'atras', 'retrocede', 'retroceder'];
-const CLOSE_WORDS = ['cerrar', 'regresar', 'volver', 'salir'];
+const PREVIOUS_WORDS = ['anterior', 'retrocede', 'retroceder'];
+/** Inside a gallery "volver"/"atrás" steps back to the picker; elsewhere it closes. */
+const BACK_WORDS = ['volver', 'atras'];
+const CLOSE_WORDS = ['cerrar', 'regresar', 'salir'];
 
 export function parseVoiceCommand(rawUtterance: string): VoiceCommand {
   const utterance = normalise(rawUtterance);
@@ -206,15 +228,22 @@ export function parseVoiceCommand(rawUtterance: string): VoiceCommand {
   if (matchesAny(utterance, words, PORTFOLIO_WORDS)) {
     return { type: 'open-portfolio', company: matchCompany(utterance, words) };
   }
+  // Gallery navigation before the media words: "siguiente video" means next, not "open videos".
+  if (matchesAny(utterance, words, NEXT_WORDS)) return { type: 'next' };
+  if (matchesAny(utterance, words, PREVIOUS_WORDS)) return { type: 'previous' };
+  if (matchesAny(utterance, words, FLYER_WORDS)) return { type: 'open-flyers' };
+  if (matchesAny(utterance, words, VIDEO_WORDS)) return { type: 'open-videos' };
   if (matchesAny(utterance, words, QR_WORDS)) return { type: 'open-qr' };
   if (QUICK_REGISTER_PHRASES.some((required) => matchesAllWords(words, required))) {
     return { type: 'quick-register' };
   }
   if (matchesAny(utterance, words, FORM_WORDS)) return { type: 'open-form' };
-  if (matchesAny(utterance, words, NEXT_WORDS)) return { type: 'next' };
-  if (matchesAny(utterance, words, PREVIOUS_WORDS)) return { type: 'previous' };
-  if (matchesAny(utterance, words, CLOSE_WORDS)) return { type: 'close' };
+  // Before the close/back words: "ingresar a la web" is one edit away from "regresar".
   if (matchesAny(utterance, words, WEBSITE_WORDS)) return { type: 'open-website' };
+  if (matchesAny(utterance, words, CLOSE_WORDS)) return { type: 'close' };
+  if (matchesAny(utterance, words, BACK_WORDS)) return { type: 'back' };
+  if (matchesAny(utterance, words, PAUSE_WORDS)) return { type: 'pause' };
+  if (matchesAny(utterance, words, PLAY_WORDS)) return { type: 'play' };
 
   const company = matchCompany(utterance, words);
   if (company !== null) return { type: 'select-company', company };

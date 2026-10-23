@@ -8,7 +8,8 @@ import type { PortfolioItem } from '@/data/companyPortfolio';
 
 /** Which shelf of the portfolio is open. `null` is the picker the visitor lands on
  *  first, before they have chosen between flyers and videos. */
-type Shelf = 'flyers' | 'videos';
+export type PortfolioShelf = 'flyers' | 'videos';
+type Shelf = PortfolioShelf;
 
 type PortfolioDialogProps = {
   readonly companyName: string;
@@ -17,6 +18,8 @@ type PortfolioDialogProps = {
   readonly color: string;
   readonly open: boolean;
   readonly onClose: () => void;
+  /** Shelf to open on instead of the picker (spoken "ver flyers" / "ver videos"). */
+  readonly initialShelf?: PortfolioShelf | null;
 };
 
 /** Same shape as `CatalogViewerHandle`, so voice "siguiente"/"anterior" keeps working
@@ -24,6 +27,13 @@ type PortfolioDialogProps = {
 export type PortfolioDialogHandle = {
   readonly next: () => void;
   readonly previous: () => void;
+  /** Switches to a shelf; ignored when that shelf is empty. */
+  readonly showShelf: (shelf: PortfolioShelf) => void;
+  /** Steps from a shelf back to the picker. Returns false when already on the picker. */
+  readonly back: () => boolean;
+  /** Plays the visible video; if the browser refuses, retries muted. */
+  readonly play: () => void;
+  readonly pause: () => void;
 };
 
 type ShelfCardProps = {
@@ -105,7 +115,7 @@ function ShelfCard({ title, count, unitSingular, unitPlural, color, icon, onOpen
  * brand's colour is used only as an accent (the hairline, the active dot, the player).
  */
 export const PortfolioDialog = forwardRef<PortfolioDialogHandle, PortfolioDialogProps>(function PortfolioDialog(
-  { companyName, flyers, videos, color, open, onClose },
+  { companyName, flyers, videos, color, open, onClose, initialShelf = null },
   ref,
 ) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -122,6 +132,25 @@ export const PortfolioDialog = forwardRef<PortfolioDialogHandle, PortfolioDialog
   useImperativeHandle(ref, () => ({
     next: () => carouselRef.current?.next(),
     previous: () => carouselRef.current?.previous(),
+    showShelf: (target) => {
+      if ((target === 'flyers' ? flyers : videos).length > 0) setShelf(target);
+    },
+    back: () => {
+      if (shelfRef.current === null) return false;
+      setShelf(null);
+      return true;
+    },
+    play: () => {
+      const video = dialogRef.current?.querySelector('video');
+      if (video == null) return;
+      // A speech callback is not a user gesture, so the browser may refuse; the card
+      // already starts muted, but retry muted explicitly in case it was unmuted.
+      void video.play().catch(() => {
+        video.muted = true;
+        void video.play().catch(() => undefined);
+      });
+    },
+    pause: () => dialogRef.current?.querySelector('video')?.pause(),
   }));
 
   useEffect(() => {
@@ -159,7 +188,9 @@ export const PortfolioDialog = forwardRef<PortfolioDialogHandle, PortfolioDialog
 
   // Every visit starts on the picker, whichever shelf was being browsed last time.
   useEffect(() => {
-    if (open) setShelf(null);
+    if (open) setShelf(initialShelf);
+    // Only when it opens: a later change of `initialShelf` must not yank the visitor around.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const heading =

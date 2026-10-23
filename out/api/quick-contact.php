@@ -28,8 +28,14 @@ if (!is_array($input)) {
 }
 
 $fullName = qc_text($input['fullName'] ?? null, 120);
-$phone = qc_text($input['phone'] ?? null, 30);
+$phone = nx_clean_phone(qc_text($input['phone'] ?? null, 30));
 $industry = qc_text($input['industry'] ?? null, 120);
+$companyName = qc_text($input['companyName'] ?? null, 160);
+$email = strtolower(str_replace(' ', '', qc_text($input['email'] ?? null, 160)));
+// The email is optional: an invalid one is dropped instead of rejecting the whole contact.
+if (preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/', $email) !== 1) {
+    $email = '';
+}
 $interestCompany = qc_text($input['interestCompany'] ?? null, 160);
 
 $missing = [];
@@ -56,11 +62,13 @@ try {
             (full_name, job_title, company_name, industry, email, phone, website,
              instagram, facebook, linkedin, tiktok, notes, interest_company, consent_at, ip_hash)
          VALUES
-            (:full_name, '', '', :industry, '', :phone, '', '', '', '', '', NULL, :interest_company, :consent_at, :ip_hash)"
+            (:full_name, '', :company_name, :industry, :email, :phone, '', '', '', '', '', NULL, :interest_company, :consent_at, :ip_hash)"
     );
     $insert->execute([
         ':full_name' => $fullName,
+        ':company_name' => $companyName,
         ':industry' => $industry,
+        ':email' => $email,
         ':phone' => $phone,
         ':interest_company' => $interestCompany,
         ':consent_at' => gmdate('Y-m-d H:i:s'),

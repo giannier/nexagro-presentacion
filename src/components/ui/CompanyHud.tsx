@@ -7,7 +7,7 @@ import { CatalogViewer, type CatalogViewerHandle } from '@/components/ui/Catalog
 import { ContactFormDialog } from '@/components/ui/ContactFormDialog';
 import { hudButtonClassName } from '@/components/ui/hudButton';
 import { CatalogIcon, FormIcon, MicIcon, PortfolioIcon, QrIcon } from '@/components/ui/icons';
-import { PortfolioDialog, type PortfolioDialogHandle } from '@/components/ui/PortfolioDialog';
+import { PortfolioDialog, type PortfolioDialogHandle, type PortfolioShelf } from '@/components/ui/PortfolioDialog';
 import { QrDialog } from '@/components/ui/QrDialog';
 import { QuickRegisterBanner } from '@/components/ui/QuickRegisterBanner';
 import { WebsiteButton } from '@/components/ui/WebsiteButton';
@@ -31,7 +31,7 @@ type OpenDialog = 'qr' | 'form' | 'portfolio' | 'catalog' | null;
  *  wheel finishes turning to that company — `null` while nothing is pending. */
 type PendingDialog = { readonly index: number; readonly dialog: 'portfolio' | 'catalog' } | null;
 
-const VOICE_TOAST_DURATION_MS = 2500;
+const VOICE_TOAST_DURATION_MS = 2000;
 
 /**
  * Chrome over the wheel panel: the active company, the position counter and its
@@ -64,6 +64,7 @@ export function CompanyHud() {
   const [pendingDialog, setPendingDialog] = useState<PendingDialog>(null);
   const [voiceToast, setVoiceToast] = useState<string | null>(null);
   const [quickRegisterActive, setQuickRegisterActive] = useState(false);
+  const [portfolioShelf, setPortfolioShelf] = useState<PortfolioShelf | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLParagraphElement>(null);
@@ -108,10 +109,41 @@ export function CompanyHud() {
       if (openDialog !== null || quickRegisterActive) {
         if (command.type === 'close') {
           closeDialog();
-        } else if (openDialog === 'portfolio' || openDialog === 'catalog') {
-          const viewer = openDialog === 'portfolio' ? portfolioViewerRef.current : catalogViewerRef.current;
+        } else if (openDialog === 'portfolio') {
+          const viewer = portfolioViewerRef.current;
+          switch (command.type) {
+            case 'next':
+              viewer?.next();
+              break;
+            case 'previous':
+              viewer?.previous();
+              break;
+            case 'open-flyers':
+              viewer?.showShelf('flyers');
+              break;
+            case 'open-videos':
+              viewer?.showShelf('videos');
+              break;
+            case 'play':
+              viewer?.play();
+              break;
+            case 'pause':
+              viewer?.pause();
+              break;
+            case 'back':
+              // On a shelf it returns to the picker; on the picker it closes the dialog.
+              if (viewer?.back() !== true) closeDialog();
+              break;
+            default:
+              break;
+          }
+        } else if (openDialog === 'catalog') {
+          const viewer = catalogViewerRef.current;
           if (command.type === 'next') viewer?.next();
-          if (command.type === 'previous') viewer?.previous();
+          if (command.type === 'previous' || command.type === 'back') viewer?.previous();
+          if (command.type === 'pause' || command.type === 'play') return;
+        } else if (command.type === 'back' && openDialog !== 'form') {
+          closeDialog();
         }
         return;
       }
@@ -130,6 +162,7 @@ export function CompanyHud() {
           const index = COMPANIES.findIndex((candidate) => candidate.slug === target.slug);
           const dialog = command.type === 'open-portfolio' ? 'portfolio' : 'catalog';
           if (index === activeIndex) {
+            setPortfolioShelf(null);
             setOpenDialog(dialog);
           } else if (index !== -1) {
             jumpToIndex(index);
@@ -138,6 +171,25 @@ export function CompanyHud() {
           showVoiceToast(target.name);
           return;
         }
+        case 'open-flyers':
+        case 'open-videos': {
+          const wanted: PortfolioShelf = command.type === 'open-flyers' ? 'flyers' : 'videos';
+          const items = portfolioFor(company.slug);
+          const flyerCount = items.filter((item) => item.type === 'image').length;
+          const videoCount = items.filter((item) => item.type === 'video').length;
+          const available = wanted === 'flyers' ? flyerCount > 0 : videoCount > 0;
+          if (flyerCount + videoCount === 0) {
+            showVoiceToast('Este portafolio aún no tiene contenido');
+            return;
+          }
+          setPortfolioShelf(available ? wanted : null);
+          setOpenDialog('portfolio');
+          return;
+        }
+        case 'back':
+        case 'play':
+        case 'pause':
+          return;
         case 'open-qr':
           setOpenDialog('qr');
           return;
@@ -173,7 +225,17 @@ export function CompanyHud() {
   // the quick-register banner needs the microphone to itself — every other dialog just
   // narrows voice down to "cerrar" above. With a single company the wheel commands
   // ("siguiente", "anterior", company names) are harmless no-ops.
-  const voice = useVoiceControl(openDialog !== 'form' && !quickRegisterActive, handleVoiceCommand);
+  // A phrase the browser heard but that matched no command is echoed back for two seconds,
+  // so the visitor can see what was actually recognised — only while nothing is open.
+  const handleUnrecognised = useCallback(
+    (text: string) => {
+      if (openDialog !== null || quickRegisterActive) return;
+      const heard = text.trim().slice(0, 60);
+      if (heard !== '') showVoiceToast(`Escuché: "${heard}"`);
+    },
+    [openDialog, quickRegisterActive, showVoiceToast],
+  );
+  const voice = useVoiceControl(openDialog !== 'form' && !quickRegisterActive, handleVoiceCommand, handleUnrecognised);
 
   // The swipe hint retires permanently after the first interaction.
   useEffect(() => {
@@ -351,7 +413,10 @@ export function CompanyHud() {
               <div className="pointer-events-auto">
                 <button
                   type="button"
-                  onClick={() => setOpenDialog('portfolio')}
+                  onClick={() => {
+                    setPortfolioShelf(null);
+                    setOpenDialog('portfolio');
+                  }}
                   aria-haspopup="dialog"
                   className={hudButtonClassName('secondary')}
                 >
@@ -385,6 +450,7 @@ export function CompanyHud() {
         companyName={company.name}
         flyers={flyers}
         videos={videos}
+        initialShelf={portfolioShelf}
         color={color}
         open={openDialog === 'portfolio'}
         onClose={closeDialog}

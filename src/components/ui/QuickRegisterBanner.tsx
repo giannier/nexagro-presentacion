@@ -6,25 +6,44 @@ import { CheckIcon, MicIcon } from '@/components/ui/icons';
 import { useSpeechRecognizer } from '@/hooks/useSpeechRecognizer';
 import { API_BASE_URL } from '@/lib/apiBaseUrl';
 
-type Fields = { readonly fullName: string; readonly phone: string; readonly industry: string };
-const EMPTY_FIELDS: Fields = { fullName: '', phone: '', industry: '' };
+type Fields = {
+  readonly fullName: string;
+  readonly phone: string;
+  readonly companyName: string;
+  readonly email: string;
+  readonly industry: string;
+};
+const EMPTY_FIELDS: Fields = { fullName: '', phone: '', companyName: '', email: '', industry: '' };
 
 type Phase =
   | { readonly kind: 'listening'; readonly fields: Fields }
   | { readonly kind: 'checking'; readonly fields: Fields }
+  /** Name, phone, company and rubro are in; waiting a moment for an optional email. */
+  | { readonly kind: 'grace'; readonly fields: Fields }
   | { readonly kind: 'saving'; readonly fields: Fields }
   | { readonly kind: 'success'; readonly fullName: string }
   | { readonly kind: 'error'; readonly message: string }
   | { readonly kind: 'timeout' };
 
+/** Display order. Email is optional, so it is marked as such and never blocks the save. */
 const FIELD_LABELS: Readonly<Record<keyof Fields, string>> = {
   fullName: 'Nombre',
   phone: 'Teléfono',
+  companyName: 'Empresa',
+  email: 'Correo (opcional)',
   industry: 'Rubro',
 };
 
-/** Give up rather than listen silently forever if the three fields never come up. */
+/** Give up rather than listen silently forever if the required fields never come up. */
 const MAX_CAPTURE_MS = 90_000;
+
+/**
+ * Once the four required fields are captured, wait this long for an email before saving
+ * anyway. Restarted by every new recognised utterance; saying "guardar" skips the wait.
+ */
+const EMAIL_GRACE_MS = 6_000;
+
+const MIN_PHONE_DIGITS = 6;
 
 type QuickRegisterResponse = {
   readonly ok?: boolean;
@@ -40,12 +59,40 @@ type QuickRegisterBannerProps = {
   readonly onDone: () => void;
 };
 
+/** Spoken "guardar" ends the capture right away with whatever has been heard so far. */
+function isSaveKeyword(text: string): boolean {
+  const words = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/);
+  return words.includes('guardar') || words.includes('guarda') || words.includes('guardalo');
+}
+
+/** Required to save at all (the server rejects anything less). Company may be empty. */
+function canForceSave(fields: Fields): boolean {
+  return (
+    fields.fullName.length >= 2 &&
+    fields.phone.replace(/\D/g, '').length >= MIN_PHONE_DIGITS &&
+    fields.industry.length >= 2
+  );
+}
+
+/** The banner's own completeness rule; it does not rely on the workflow's `complete` flag. */
+function hasRequiredFields(fields: Fields): boolean {
+  return canForceSave(fields) && fields.companyName.length >= 2;
+}
+
 /**
  * "Registrar cliente" by voice: listens to the live conversation, sends the accumulated
- * transcript to `/api/quick-register.php` after every finalised sentence, and the moment
- * name + phone + rubro are all captured, saves through `/api/quick-contact.php` and shows
- * "Cliente registrado" — no review step, by explicit choice for this reduced, three-field
- * flow (unlike the fuller "Formulario" voice recorder, which always waits for a tap).
+ * transcript to `/api/quick-register.php` after every finalised sentence, and once name,
+ * phone, company and rubro are captured it saves through `/api/quick-contact.php` and
+ * shows "Cliente registrado" — no review step, by explicit choice for this reduced flow
+ * (unlike the fuller "Formulario" voice recorder, which always waits for a tap).
+ *
+ * The email is optional but easy to lose: when the four required fields are in, the save
+ * waits `EMAIL_GRACE_MS` for an email (or the word "guardar") instead of firing instantly.
  *
  * A background banner, not a modal: the point is this keeps working while whoever is
  * running it keeps looking at the client and the wheel, not at the tablet.
@@ -55,9 +102,59 @@ export function QuickRegisterBanner({ interestCompany, onDone }: QuickRegisterBa
   const [transcriptPreview, setTranscriptPreview] = useState('');
   const transcriptRef = useRef('');
   const checkingRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const savingRef = useRef(false);
+  const fieldsRef = useRef<Fields>(EMPTY_FIELDS);
+  const graceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearGrace = useCallback(() => {
+    if (graceTimerRef.current !== null) {
+      clearTimeout(graceTimerRef.current);
+      graceTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => clearGrace, [clearGrace]);
+
+  const save = useCallback(
+    async (fields: Fields) => {
+      if (savingRef.current) return;
+      savingRef.current = true;
+      clearGrace();
+      setPhase({ kind: 'saving', fields });
+
+      try {
+        const saveResponse = await fetch(`${API_BASE_URL}/api/quick-contact.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...fields, interestCompany }),
+        });
+        const saveData = (await saveResponse.json().catch(() => ({}))) as QuickContactResponse;
+
+        if (saveResponse.ok && saveData.ok === true) {
+          setPhase({ kind: 'success', fullName: fields.fullName });
+          return;
+        }
+        savingRef.current = false;
+        setPhase({
+          kind: 'error',
+          message: typeof saveData.message === 'string' ? saveData.message : 'No se pudo guardar el contacto.',
+        });
+      } catch {
+        savingRef.current = false;
+        setPhase({ kind: 'error', message: 'No se pudo guardar el contacto.' });
+      }
+    },
+    [clearGrace, interestCompany],
+  );
 
   const runCheck = useCallback(async () => {
-    if (checkingRef.current) return;
+    if (savingRef.current) return;
+    if (checkingRef.current) {
+      // An utterance arrived while a check was in flight: look again once it finishes.
+      dirtyRef.current = true;
+      return;
+    }
     checkingRef.current = true;
     setPhase((previous) => (previous.kind === 'listening' ? { kind: 'checking', fields: previous.fields } : previous));
 
@@ -70,64 +167,68 @@ export function QuickRegisterBanner({ interestCompany, onDone }: QuickRegisterBa
       const data = (await response.json().catch(() => ({}))) as QuickRegisterResponse;
 
       if (!response.ok || data.ok !== true || data.fields === undefined) {
-        checkingRef.current = false;
-        setPhase((previous) =>
-          previous.kind === 'checking' ? { kind: 'listening', fields: previous.fields } : previous,
-        );
+        setPhase((previous) => (previous.kind === 'checking' ? { kind: 'listening', fields: previous.fields } : previous));
         return;
       }
 
       const fields: Fields = {
         fullName: data.fields.fullName ?? '',
         phone: data.fields.phone ?? '',
+        companyName: data.fields.companyName ?? '',
+        email: data.fields.email ?? '',
         industry: data.fields.industry ?? '',
       };
-      const missing = data.missing ?? [];
+      fieldsRef.current = fields;
 
-      if (missing.length > 0) {
-        checkingRef.current = false;
+      if (!hasRequiredFields(fields)) {
+        clearGrace();
         setPhase({ kind: 'listening', fields });
         return;
       }
 
-      setPhase({ kind: 'saving', fields });
-      const saveResponse = await fetch(`${API_BASE_URL}/api/quick-contact.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...fields, interestCompany }),
-      });
-      const saveData = (await saveResponse.json().catch(() => ({}))) as QuickContactResponse;
-
-      if (saveResponse.ok && saveData.ok === true) {
-        setPhase({ kind: 'success', fullName: fields.fullName });
+      if (fields.email !== '') {
+        void save(fields);
         return;
       }
 
-      checkingRef.current = false;
-      setPhase({
-        kind: 'error',
-        message: typeof saveData.message === 'string' ? saveData.message : 'No se pudo guardar el contacto.',
-      });
+      // Required fields complete, no email yet: give it a moment before saving without.
+      setPhase({ kind: 'grace', fields });
+      clearGrace();
+      graceTimerRef.current = setTimeout(() => void save(fieldsRef.current), EMAIL_GRACE_MS);
     } catch {
+      setPhase((previous) => (previous.kind === 'checking' ? { kind: 'listening', fields: previous.fields } : previous));
+    } finally {
       checkingRef.current = false;
-      setPhase((previous) =>
-        previous.kind === 'checking' || previous.kind === 'saving'
-          ? { kind: 'listening', fields: previous.fields }
-          : previous,
-      );
+      if (dirtyRef.current && !savingRef.current) {
+        dirtyRef.current = false;
+        void runCheck();
+      }
     }
-  }, [interestCompany]);
+  }, [clearGrace, save]);
 
   const handleFinalText = useCallback(
     (text: string) => {
+      if (savingRef.current) return;
+
+      if (isSaveKeyword(text) && canForceSave(fieldsRef.current)) {
+        void save(fieldsRef.current);
+        return;
+      }
+
       transcriptRef.current = `${transcriptRef.current} ${text}`.trim();
       setTranscriptPreview(transcriptRef.current);
+      // Every new utterance restarts the email grace window (when one is running). The
+      // check below re-arms it as well, or saves at once if the email just arrived.
+      if (graceTimerRef.current !== null) {
+        clearGrace();
+        graceTimerRef.current = setTimeout(() => void save(fieldsRef.current), EMAIL_GRACE_MS);
+      }
       void runCheck();
     },
-    [runCheck],
+    [clearGrace, runCheck, save],
   );
 
-  const listening = phase.kind === 'listening' || phase.kind === 'checking';
+  const listening = phase.kind === 'listening' || phase.kind === 'checking' || phase.kind === 'grace';
   // Surfaced in the UI below rather than discarded — the only way anyone can tell, from
   // a live device with no console attached, whether the microphone session behind this
   // banner is actually running or silently dead.
@@ -143,12 +244,15 @@ export function QuickRegisterBanner({ interestCompany, onDone }: QuickRegisterBa
   }, [phase.kind, onDone]);
 
   useEffect(() => {
-    if (phase.kind !== 'listening' && phase.kind !== 'checking') return;
+    if (phase.kind !== 'listening' && phase.kind !== 'checking' && phase.kind !== 'grace') return;
     const timer = setTimeout(() => setPhase({ kind: 'timeout' }), MAX_CAPTURE_MS);
     return () => clearTimeout(timer);
   }, [phase.kind]);
 
-  const fields = phase.kind === 'listening' || phase.kind === 'checking' || phase.kind === 'saving' ? phase.fields : EMPTY_FIELDS;
+  const fields =
+    phase.kind === 'listening' || phase.kind === 'checking' || phase.kind === 'grace' || phase.kind === 'saving'
+      ? phase.fields
+      : EMPTY_FIELDS;
 
   return (
     <div className="pointer-events-auto absolute inset-x-3 top-3 z-30 flex justify-center sm:inset-x-6 sm:top-6">
@@ -189,9 +293,9 @@ export function QuickRegisterBanner({ interestCompany, onDone }: QuickRegisterBa
                 Cancelar
               </button>
             </div>
-            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[0.7rem] text-white/70">
+            <ul className="flex flex-wrap gap-x-3.5 gap-y-1 text-[0.7rem] text-white/70">
               {(Object.keys(FIELD_LABELS) as (keyof Fields)[]).map((key) => (
-                <li key={key} className="flex items-center gap-1.5">
+                <li key={key} className={`flex items-center gap-1.5 ${key === 'email' ? 'text-white/45' : ''}`}>
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${fields[key] !== '' ? 'bg-emerald-400' : 'bg-white/30'}`}
                   />
@@ -199,6 +303,9 @@ export function QuickRegisterBanner({ interestCompany, onDone }: QuickRegisterBa
                 </li>
               ))}
             </ul>
+            {phase.kind === 'grace' && (
+              <p className="text-[0.7rem] font-medium text-emerald-300">Di el correo o &quot;guardar&quot;</p>
+            )}
             {/* Temporary while the feature is still being verified on real devices —
                 shows exactly what the microphone session is doing and what it has heard
                 so far, instead of a silent "Escuchando…" that looks identical whether it

@@ -13,13 +13,18 @@ export type VoiceControlState = SpeechRecognizerState;
  * for anything that is not `{ type: 'none' }`. The microphone session itself is owned by
  * `useSpeechRecognizer`; this hook only adds the command-parsing layer on top of it.
  */
-export function useVoiceControl(enabled: boolean, onCommand: (command: VoiceCommand) => void): VoiceControlState {
+export function useVoiceControl(
+  enabled: boolean,
+  onCommand: (command: VoiceCommand) => void,
+  onUnrecognised?: (text: string) => void,
+): VoiceControlState {
   const handleFinalText = useCallback(
     (text: string) => {
       const command = parseVoiceCommand(text);
       if (command.type !== 'none') onCommand(command);
+      else onUnrecognised?.(text);
     },
-    [onCommand],
+    [onCommand, onUnrecognised],
   );
 
   return useSpeechRecognizer(enabled, handleFinalText);
