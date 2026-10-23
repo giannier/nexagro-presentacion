@@ -16,4 +16,9 @@ return [
     'admin_user' => 'admin',
     'admin_pass_hash' => 'PASTE_PASSWORD_HASH_HERE',
     'ip_salt' => 'PASTE_RANDOM_STRING_HERE',
+    // n8n voice workflows. The secret must equal REPLACE_WITH_SHARED_SECRET inside the
+    // imported n8n workflow:  php -r "echo bin2hex(random_bytes(32));"
+    'n8n_secret' => 'PASTE_RANDOM_STRING_HERE',
+    'n8n_quick_register_url' => 'https://YOUR-N8N-HOST/webhook/nexagro-quick-register',
+    'n8n_voice_contact_url' => 'https://YOUR-N8N-HOST/webhook/voice-contact',
 ];

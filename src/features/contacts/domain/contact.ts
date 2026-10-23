@@ -29,16 +29,14 @@ export type ContactTextField = (typeof CONTACT_TEXT_FIELDS)[number];
  */
 export const CONTACT_HONEYPOT_FIELD = 'nickname';
 
-export type ContactInput = Partial<Record<ContactTextField, unknown>> & {
-  readonly consent?: unknown;
-};
+export type ContactInput = Partial<Record<ContactTextField, unknown>>;
 
 export type Contact = Readonly<Record<ContactTextField, string>> & {
-  /** ISO timestamp of when the person authorised storing their data. */
+  /** ISO timestamp of when the contact was recorded. */
   readonly consentAt: string;
 };
 
-export type ContactErrorField = ContactTextField | 'consent';
+export type ContactErrorField = ContactTextField;
 export type ContactErrors = Partial<Record<ContactErrorField, string>>;
 
 export type ContactValidation =
@@ -113,10 +111,6 @@ export function validateContact(input: ContactInput, now: Date = new Date()): Co
     const website = normaliseWebsite(values.website);
     if (website === null) errors.website = 'La página web no es válida.';
     else values.website = website;
-  }
-
-  if (input.consent !== true) {
-    errors.consent = 'Se necesita la autorización para guardar los datos.';
   }
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };

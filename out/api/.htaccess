@@ -1,5 +1,5 @@
-# db.php is an include, never an endpoint.
-<Files "db.php">
+# db.php and helpers.php are includes, never endpoints.
+<FilesMatch "^(db|helpers)\.php$">
     Require all denied
-</Files>
+</FilesMatch>
 Options -Indexes

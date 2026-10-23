@@ -133,10 +133,6 @@ if ($values['website'] !== '') {
     }
 }
 
-if (($input['consent'] ?? null) !== true) {
-    $errors['consent'] = 'Se necesita la autorización para guardar los datos.';
-}
-
 if ($errors !== []) {
     respond(422, ['ok' => false, 'errors' => $errors]);
 }

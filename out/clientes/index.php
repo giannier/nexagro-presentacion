@@ -206,7 +206,7 @@ try {
     if (($_GET['export'] ?? '') === '1') {
         $stmt = $pdo->prepare(
             'SELECT full_name, job_title, company_name, industry, email, phone, website, instagram, facebook,
-                    linkedin, tiktok, notes, interest_company, consent_at, created_at
+                    linkedin, tiktok, notes, interest_company, created_at
              FROM contacts' . $where . ' ORDER BY created_at DESC, id DESC'
         );
         $stmt->execute($params);
@@ -217,7 +217,7 @@ try {
         fwrite($out, "\xEF\xBB\xBF");
         fputcsv($out, [
             'Nombre', 'Cargo', 'Empresa', 'Rubro', 'Correo', 'Teléfono', 'Web', 'Instagram', 'Facebook',
-            'LinkedIn', 'TikTok', 'Notas', 'Interesado en', 'Autorización', 'Fecha de registro',
+            'LinkedIn', 'TikTok', 'Notas', 'Interesado en', 'Fecha de registro',
         ], ',', '"', '');
         while (($row = $stmt->fetch()) !== false) {
             fputcsv($out, array_map('csv_cell', array_values($row)), ',', '"', '');
