@@ -47,7 +47,7 @@ export const COMPANY_PROFILES: Readonly<Record<string, CompanyProfile>> = {
     tail: 'del campo peruano al mundo.',
     subtitle: '',
     phone: '+51 989 797 977',
-    email: 'info@nexagroexport.com',
+    email: 'comercial@nexagroexport.com',
   },
 };
 
